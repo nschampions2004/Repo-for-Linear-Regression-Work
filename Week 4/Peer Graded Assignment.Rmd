@@ -1,0 +1,98 @@
+---
+title: "Regression Models Course Project"
+author: "Kyle"
+date: "July 14, 2016"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Peer Graded Assignment: Regression Models Coursera Project
+## Answer the Following Questions:
+## 1) "Is an automatic or manual transmission better for MPG"
+The manual vehicle is better due to a p-value of .0006 from a two sample t-test in the means of the two samples.  
+
+## 2) "Quantify the MPG difference between automatic and manual transmissions"
+We are 95% confident the true difference in the means of manual and automatic transmissions lies between 3.913 MPG and Positive Infinity.  
+
+### Step 1: Load the Data into R
+```{r}
+library(datasets)
+cars <- datasets::mtcars
+head(cars)
+```
+###Step 2: Exploratory Data Analysis
+
+####Now that we have the data loaded into R, it's time to graph the mpg based on automatic and manual transmissions.  
+```{r}
+library(ggplot2)
+g <- ggplot(data = cars, aes(x = as.factor(am), y = mpg)) + 
+     geom_point()+ 
+     labs(x = "Transmission Type (0 = Auto, 1 = Manual)", y = "Miles per Gallon")
+print(g)
+```
+
+####As we can see, the engines of manual vehicles run more efficiently based on MPG than their automatic counterparts.  To solidify this notion, we will run a two sample T test to see if the means of these two groups are in fact different.  
+
+###Step 3: Split data by manual and automatic transmission type and find the mean of each groups MPG's.  
+```{r}
+autos <- subset(cars, am == "0")
+mans <- subset(cars, am == "1")
+mean(autos$mpg)
+mean(mans$mpg)
+```
+
+###Step 4: Check criteria to see if two-sample t-test is appropriate.  
+
+####Criteria #1: Samples are Drawn from Normal distributions
+
+```{r}
+require(gridExtra)
+plot1 <- qplot(autos$mpg, binwidth = 2)
+plot2 <- qplot(mans$mpg, binwidth = 2)
+grid.arrange(plot1, plot2, ncol=2)
+```
+
+####Criteria #2: Samples must be independent.
+
+#####Since the probability of being a manual car does not affect the probability of being an automatic vehicle, this condition is met.  
+
+####Step 5: T-test
+
+```{r}
+t.test(mans$mpg, autos$mpg, alternative = "greater")
+```
+
+####With a p-value of 0.0006, we can conclude: there is sufficient evidence that manual transmissions consume less gasoline and are more fuel efficient.  There is evidence against the hypothesis that the means of the two groups are the same.  Finally, to quantify this difference betweeen the two types of vehicles, we can use our t-test to create a confidence interval.  Recalling that our interval was (3.913, + Inf), we are 95% confident the true difference lies within these bounds. 
+
+```{r}
+fit <- lm(mpg ~ am, data = cars)
+summary(fit)
+```
+Now that we see the R^2 valus is around 36% our goal is to find a model where a higher percent of variance can be explained.  
+```{r}
+library(car)
+fit_all <- lm(mpg ~ ., cars)
+vif(fit_all)
+sqrt(vif(fit_all))
+```
+With the standard deviations of inflation factors stated.  We will take the highest and update out model systematically to see which model will best predict MPG of vehicles and have the high R^2 value.
+```{r}
+fit1 <- lm(mpg ~ am, data = cars)
+fit2 <- update(fit1, mpg ~ am + cyl)
+fit3 <- update(fit1, mpg ~ am + cyl + disp)
+fit4 <- update(fit1, mpg ~ am + cyl + disp + hp)
+fit5 <- update(fit1, mpg ~ am + cyl + disp + hp + wt)
+
+anova(fit1, fit2, fit3, fit4, fit5)
+```
+
+Based off the p-value from the F-statistics, Model 5 and Model 2 end up being the most statistically significant. With that being said, of the two values, a look at the RSS values yields Model5 as the better model in this particular case.  Finally, to make sure our model is not flawed, let's look at the residuals to see if there is a pattern.    
+```{r}
+plot(residuals(fit5))
+abline(h = 0, col = "red")
+```
+Since there is no pattern of consistently over estimating or underestimating the residuals, this model appears ready for action.  
+
+
